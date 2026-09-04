@@ -5,7 +5,14 @@
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/** ULID: 48-bit millisecond timestamp + 80 random bits, Crockford base32, sortable. */
+let lastTime = -1;
+let lastRandom: number[] = [];
+
+/**
+ * ULID: 48-bit millisecond timestamp + 80 random bits, Crockford base32, sortable.
+ * Monotonic inside a process: two ids minted in the same millisecond keep increasing,
+ * so "latest wins" by id is deterministic even for taps faster than the clock.
+ */
 export function ulid(now: number = Date.now()): string {
   let time = now;
   const timeChars = new Array<string>(10);
@@ -13,11 +20,26 @@ export function ulid(now: number = Date.now()): string {
     timeChars[i] = CROCKFORD[time % 32]!;
     time = Math.floor(time / 32);
   }
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  let rand = "";
-  for (let i = 0; i < 16; i++) rand += CROCKFORD[bytes[i]! % 32];
-  return timeChars.join("") + rand;
+  if (now === lastTime && lastRandom.length === 16) {
+    // increment the previous random part (base 32, little chance of overflow)
+    let i = 15;
+    while (i >= 0) {
+      if (lastRandom[i]! < 31) {
+        lastRandom[i]!++;
+        break;
+      }
+      lastRandom[i] = 0;
+      i--;
+    }
+  } else {
+    const bytes = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(bytes);
+    lastRandom = Array.from(bytes, (b) => b % 32);
+    // keep headroom so increments in the same millisecond never overflow
+    if (lastRandom[0]! > 15) lastRandom[0] = lastRandom[0]! - 16;
+    lastTime = now;
+  }
+  return timeChars.join("") + lastRandom.map((v) => CROCKFORD[v]).join("");
 }
 
 export const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
