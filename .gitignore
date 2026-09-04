@@ -1,0 +1,18 @@
+# dependencies and builds
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# real data never enters the repo: paths to the MOSAIC workbooks live here
+local.config.json
+local/
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+
+# Claude Code local settings
+.claude/settings.local.json

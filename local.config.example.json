@@ -1,0 +1,15 @@
+{
+  "_comment": "Copy to local.config.json (gitignored) and point each entry to the real workbook on this machine. The reproduction tests skip when the file or a path is missing.",
+  "mosaic": {
+    "sampling_registry": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Fenotipado_Melocotonero_MOSAIC/03_sources/01_datos_campo/Peach_Sampling_EEAD_MOSAIC_2025.xlsx",
+    "breaking_dormancy": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Fenotipado_Melocotonero_MOSAIC/03_sources/01_datos_campo/Peach_Branches_Breaking Dormancy_EEAD_MOSAIC_2025.xlsx",
+    "cp_data_def": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Fenotipado_Melocotonero_MOSAIC/03_sources/01_datos_campo/MOSAIC_2025_EEAD_peach_CP_data DEF.xlsx",
+    "flowering_list": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Fenotipado_Melocotonero_MOSAIC/03_sources/01_datos_campo/Peach_2026_Listado floración.xlsx",
+    "cp50_results": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Fenotipado_Melocotonero_MOSAIC/04_scripts/07_Analisis_CP50_Repo/tables/cp50_results.csv",
+    "descensos_curva": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Fenotipado_Melocotonero_MOSAIC/04_scripts/07_Analisis_CP50_Repo/tables/descensos_curva.csv"
+  },
+  "cieza": {
+    "croquis_original": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Bulida_Precoz/03_sources/22_info_parcela_arboles/Croquis_mutants.xlsx",
+    "revision_2026_09_02": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Bulida_Precoz/03_sources/22_info_parcela_arboles/Croquis_mutants_revision_2026-09-02.xlsx"
+  }
+}
