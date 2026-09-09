@@ -97,14 +97,20 @@ function mid(a: string | undefined, b: string | undefined): number | null {
   if (a === undefined) return null;
   const x = Number(a);
   const y = b === undefined ? x : Number(b);
-  if (!Number.isFinite(x) || !Number.isFinite(y) || x > 100 || y > 100) return null;
+  // a range that goes down ("C100-20") is a typo, not a range
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x > 100 || y > 100 || y < x) return null;
   return (x + y) / 2;
 }
 
 /** Parse a visit label; null for anything that is not a stage ("Tratam", "?", dates, typos). */
 export function parseStageLabel(label: string): ParsedStage | null {
   const raw = label.trim();
-  const s = raw.replace(/\s+/g, "").toUpperCase();
+  // "F40-F50" and "C5-C10" are ranges with the letter repeated; read them as F40-50 and C5-10.
+  const s = raw
+    .replace(/\s+/g, "")
+    .toUpperCase()
+    .replace(/F(\d{1,3})-F(\d{1,3})/g, "F$1-$2")
+    .replace(/C(\d{1,3})-C(\d{1,3})/g, "C$1-$2");
   if (s === "") return null;
   const m = LABEL_RE.exec(s);
   if (!m) return null;
@@ -116,6 +122,7 @@ export function parseStageLabel(label: string): ParsedStage | null {
   const fallNum = m[4] !== undefined ? mid(m[4], m[5]) : null;
   if (!hasF && !hasC && pre === "") return null;
   if (hasF && open === null) return null;
+  if (m[4] !== undefined && fallNum === null) return null;
   let fall = 0;
   if (fallNum !== null) fall = fallNum;
   else if (hasC) fall = 1;

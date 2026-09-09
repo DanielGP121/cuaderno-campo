@@ -22,6 +22,10 @@ describe("visit labels of the EEAD lists", () => {
     expect(parseStageLabel("AB-F0")).toMatchObject({ pre: "AB", open: 0 });
     expect(parseStageLabel("BC")).toMatchObject({ pre: "BC", open: 0, fall: 0 });
     expect(parseStageLabel("F-90")).toMatchObject({ open: 90 });
+    expect(parseStageLabel("F40-F50")).toMatchObject({ open: 45, fall: 0 });
+    expect(parseStageLabel("C5-C10")).toMatchObject({ open: 100, fall: 7.5 });
+    expect(parseStageLabel("F90-C5-C10")).toMatchObject({ open: 90, fall: 7.5 });
+    expect(parseStageLabel("C100-C20")).toBeNull();
     expect(parseStageLabel("Tratam")).toBeNull();
     expect(parseStageLabel("?")).toBeNull();
     expect(parseStageLabel("2026-05-03")).toBeNull();

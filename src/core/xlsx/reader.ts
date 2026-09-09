@@ -6,19 +6,51 @@
  *
  * Dates come back as ISO strings ("2026-03-09" or "2026-03-09T10:30:00") when the
  * cell style is a date format; everything else keeps its raw type.
+ *
+ * Besides values, a sheet carries its merged ranges and the anchors of the pictures
+ * placed on it: the hand-drawn plot maps merge a cell over the trees of a variety and
+ * mark each living tree of the CITA collection with a small tree icon. On request the
+ * font and fill colour of every cell come too, because the flowering sheets write
+ * estimated values in red and grey out the trees that were not phenotyped.
  */
 import { unzipSync } from "fflate";
 
 export type CellValue = string | number | boolean | null;
 
+export interface PictureAnchor {
+  /** 0-based row and column of the cell the picture is anchored to. */
+  row: number;
+  col: number;
+}
+
+/** Colours of a cell as written in the style tables (ARGB such as "FFFF0000"). */
+export interface CellStyle {
+  fontRgb?: string;
+  fontTheme?: number;
+  fillRgb?: string;
+  fillTheme?: number;
+  fillTint?: number;
+}
+
 export interface Sheet {
   name: string;
   /** Row-major grid, 0-based, ragged rows padded with null up to the last used column of that row. */
   rows: CellValue[][];
+  /** Merged ranges as written in the sheet ("E3:F3"). */
+  merges: string[];
+  /** Pictures anchored on the sheet (a drawing part), by the cell of their top-left corner. */
+  pictures: PictureAnchor[];
+  /** Cell colours, parallel to `rows`; only present when read with `{ styles: true }`. */
+  styles?: (CellStyle | null)[][];
 }
 
 export interface Workbook {
   sheets: Sheet[];
+}
+
+export interface ReadOptions {
+  /** Also read the font and fill colour of every cell. */
+  styles?: boolean;
 }
 
 const BUILTIN_DATE_FORMATS = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 30, 36, 45, 46, 47, 50, 57]);
@@ -55,6 +87,22 @@ export function columnLetters(index: number): string {
     n = Math.floor((n - 1) / 26);
   }
   return s;
+}
+
+export interface CellRange {
+  r0: number;
+  c0: number;
+  r1: number;
+  c1: number;
+}
+
+/** "E3:F3" (or a single "E3") to 0-based inclusive bounds. */
+export function parseRange(ref: string): CellRange {
+  const [a, b = a] = ref.split(":") as [string, string?];
+  const pa = /^([A-Z]+)(\d+)$/.exec(a.trim());
+  const pb = /^([A-Z]+)(\d+)$/.exec((b ?? a).trim());
+  if (!pa || !pb) throw new Error(`bad range: ${ref}`);
+  return { r0: Number(pa[2]) - 1, c0: columnIndex(pa[1]!), r1: Number(pb[2]) - 1, c1: columnIndex(pb[1]!) };
 }
 
 /** Excel serial (1900 system) to ISO date or datetime string. */
@@ -98,6 +146,72 @@ function parseStyles(xml: string): boolean[] {
   return out;
 }
 
+interface ColourRef {
+  rgb?: string;
+  theme?: number;
+  tint?: number;
+}
+
+interface StyleTables {
+  fonts: ColourRef[];
+  fills: ColourRef[];
+  xfs: { fontId: number; fillId: number }[];
+}
+
+function colourOf(attrs: string): ColourRef {
+  const out: ColourRef = {};
+  const rgb = /\brgb="([0-9A-Fa-f]+)"/.exec(attrs)?.[1];
+  if (rgb) out.rgb = rgb.toUpperCase();
+  const theme = /\btheme="(\d+)"/.exec(attrs)?.[1];
+  if (theme) out.theme = Number(theme);
+  const tint = /\btint="(-?[\d.]+)"/.exec(attrs)?.[1];
+  if (tint) out.tint = Number(tint);
+  return out;
+}
+
+/** Font and fill colour tables plus the font/fill index of every cell format. */
+function parseStyleTables(xml: string): StyleTables {
+  const fonts: ColourRef[] = [];
+  const fontsBlock = /<fonts\b[^>]*>([\s\S]*?)<\/fonts>/.exec(xml)?.[1] ?? "";
+  for (const m of fontsBlock.matchAll(/<font\b[^>]*?(?:\/>|>([\s\S]*?)<\/font>)/g)) {
+    const color = /<color\b([^>]*)\/>/.exec(m[1] ?? "")?.[1];
+    fonts.push(color ? colourOf(color) : {});
+  }
+  const fills: ColourRef[] = [];
+  const fillsBlock = /<fills\b[^>]*>([\s\S]*?)<\/fills>/.exec(xml)?.[1] ?? "";
+  for (const m of fillsBlock.matchAll(/<fill\b[^>]*?(?:\/>|>([\s\S]*?)<\/fill>)/g)) {
+    const inner = m[1] ?? "";
+    const pattern = /<patternFill\b([^>]*)/.exec(inner)?.[1] ?? "";
+    const type = /\bpatternType="(\w+)"/.exec(pattern)?.[1];
+    if (!type || type === "none") {
+      fills.push({});
+      continue;
+    }
+    const fg = /<fgColor\b([^>]*)\/>/.exec(inner)?.[1];
+    fills.push(fg ? colourOf(fg) : {});
+  }
+  const xfs: StyleTables["xfs"] = [];
+  const xfsBlock = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/.exec(xml)?.[1] ?? "";
+  for (const m of xfsBlock.matchAll(/<xf\b([^>]*)\/?>/g)) {
+    xfs.push({ fontId: Number(/\bfontId="(\d+)"/.exec(m[1]!)?.[1] ?? "0"), fillId: Number(/\bfillId="(\d+)"/.exec(m[1]!)?.[1] ?? "0") });
+  }
+  return { fonts, fills, xfs };
+}
+
+function styleOf(tables: StyleTables, index: number): CellStyle | null {
+  const xf = tables.xfs[index];
+  if (!xf) return null;
+  const font = tables.fonts[xf.fontId] ?? {};
+  const fill = tables.fills[xf.fillId] ?? {};
+  const out: CellStyle = {};
+  if (font.rgb) out.fontRgb = font.rgb;
+  if (font.theme !== undefined) out.fontTheme = font.theme;
+  if (fill.rgb) out.fillRgb = fill.rgb;
+  if (fill.theme !== undefined) out.fillTheme = fill.theme;
+  if (fill.tint !== undefined) out.fillTint = fill.tint;
+  return Object.keys(out).length ? out : null;
+}
+
 function parseSharedStrings(xml: string): string[] {
   const out: string[] = [];
   for (const m of xml.matchAll(/<si>([\s\S]*?)<\/si>/g)) {
@@ -107,13 +221,17 @@ function parseSharedStrings(xml: string): string[] {
   return out;
 }
 
-function parseSheet(xml: string, shared: string[], dateStyles: boolean[]): CellValue[][] {
+function parseSheet(xml: string, shared: string[], dateStyles: boolean[], tables: StyleTables | null): { rows: CellValue[][]; styles: (CellStyle | null)[][] } {
   const rows: CellValue[][] = [];
+  const styles: (CellStyle | null)[][] = [];
   const cellRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
-  for (const rowMatch of xml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)) {
+  // A formatted empty row is written self-closed (`<row r="2" .../>`); it must not
+  // swallow the next row's cells, hence the two alternatives.
+  for (const rowMatch of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
     const rIndex = Number(/\br="(\d+)"/.exec(rowMatch[1]!)?.[1] ?? rows.length + 1) - 1;
     const row: CellValue[] = [];
-    for (const c of rowMatch[2]!.matchAll(cellRe)) {
+    const rowStyles: (CellStyle | null)[] = [];
+    for (const c of (rowMatch[2] ?? "").matchAll(cellRe)) {
       const attrs = c[1]!;
       const inner = c[2] ?? "";
       const ref = /\br="([A-Z]+)\d+"/.exec(attrs)?.[1];
@@ -141,20 +259,73 @@ function parseSheet(xml: string, shared: string[], dateStyles: boolean[]): CellV
       }
       while (row.length < col) row.push(null);
       row[col] = value;
+      if (tables) {
+        while (rowStyles.length < col) rowStyles.push(null);
+        rowStyles[col] = style >= 0 ? styleOf(tables, style) : null;
+      }
     }
     while (rows.length < rIndex) rows.push([]);
     rows[rIndex] = row;
+    if (tables) {
+      while (styles.length < rIndex) styles.push([]);
+      styles[rIndex] = rowStyles;
+    }
   }
-  return rows;
+  return { rows, styles };
+}
+
+function parseMerges(xml: string): string[] {
+  const out: string[] = [];
+  for (const m of xml.matchAll(/<mergeCell\b[^>]*\bref="([A-Z]+\d+:[A-Z]+\d+)"/g)) out.push(m[1]!);
+  return out;
+}
+
+/** Resolve a relationship target ("../drawings/drawing1.xml") against the part's folder. */
+function resolvePart(fromPart: string, target: string): string {
+  if (target.startsWith("/")) return target.slice(1);
+  const parts = fromPart.split("/").slice(0, -1);
+  for (const seg of target.split("/")) {
+    if (seg === "..") parts.pop();
+    else if (seg !== ".") parts.push(seg);
+  }
+  return parts.join("/");
+}
+
+/**
+ * Anchors of the pictures on a sheet. Each anchor block of the drawing part that holds
+ * a `<xdr:pic>` contributes the cell of its `<xdr:from>` corner.
+ */
+function parsePictures(files: Record<string, Uint8Array>, sheetPart: string): PictureAnchor[] {
+  const relsPart = sheetPart.replace(/worksheets\/([^/]+)$/, "worksheets/_rels/$1.rels");
+  const rels = text(files[relsPart]);
+  if (!rels) return [];
+  const out: PictureAnchor[] = [];
+  for (const m of rels.matchAll(/<Relationship\b[^>]*>/g)) {
+    if (!/Type="[^"]*\/drawing"/.test(m[0])) continue;
+    const target = /\bTarget="([^"]+)"/.exec(m[0])?.[1];
+    if (!target) continue;
+    const drawing = text(files[resolvePart(sheetPart, target)]);
+    for (const a of drawing.matchAll(/<xdr:(oneCellAnchor|twoCellAnchor|absoluteAnchor)\b[\s\S]*?<\/xdr:\1>/g)) {
+      const block = a[0];
+      if (!/<xdr:pic[\s>]/.test(block)) continue;
+      const from = /<xdr:from>([\s\S]*?)<\/xdr:from>/.exec(block)?.[1] ?? "";
+      const col = Number(/<xdr:col>(\d+)<\/xdr:col>/.exec(from)?.[1] ?? "-1");
+      const row = Number(/<xdr:row>(\d+)<\/xdr:row>/.exec(from)?.[1] ?? "-1");
+      if (col >= 0 && row >= 0) out.push({ row, col });
+    }
+  }
+  return out;
 }
 
 /** Parse an .xlsx from bytes. */
-export function readWorkbook(bytes: Uint8Array): Workbook {
+export function readWorkbook(bytes: Uint8Array, opts: ReadOptions = {}): Workbook {
   const files = unzipSync(bytes);
   const wbXml = text(files["xl/workbook.xml"]);
   const relsXml = text(files["xl/_rels/workbook.xml.rels"]);
   const shared = parseSharedStrings(text(files["xl/sharedStrings.xml"]));
-  const dateStyles = parseStyles(text(files["xl/styles.xml"]));
+  const stylesXml = text(files["xl/styles.xml"]);
+  const dateStyles = parseStyles(stylesXml);
+  const tables = opts.styles ? parseStyleTables(stylesXml) : null;
 
   const rels = new Map<string, string>();
   for (const m of relsXml.matchAll(/<Relationship\b[^>]*>/g)) {
@@ -169,9 +340,27 @@ export function readWorkbook(bytes: Uint8Array): Workbook {
     const rId = /\br:id="([^"]+)"/.exec(m[0])?.[1] ?? /\bid="([^"]+)"/.exec(m[0])?.[1];
     const target = rId ? rels.get(rId) : undefined;
     const xml = target ? text(files[target]) : "";
-    sheets.push({ name, rows: xml ? parseSheet(xml, shared, dateStyles) : [] });
+    const parsed = xml ? parseSheet(xml, shared, dateStyles, tables) : { rows: [], styles: [] };
+    const sheet: Sheet = {
+      name,
+      rows: parsed.rows,
+      merges: xml ? parseMerges(xml) : [],
+      pictures: target ? parsePictures(files, target) : [],
+    };
+    if (tables) sheet.styles = parsed.styles;
+    sheets.push(sheet);
   }
   return { sheets };
+}
+
+/** Style of a cell, null when unknown or when the workbook was read without styles. */
+export function styleAt(sheet: Sheet, row: number, col: number): CellStyle | null {
+  return sheet.styles?.[row]?.[col] ?? null;
+}
+
+/** True for an ARGB/RGB string that is pure red, the colour the sheets use for estimates. */
+export function isRed(rgb: string | undefined): boolean {
+  return rgb !== undefined && rgb.slice(-6).toUpperCase() === "FF0000";
 }
 
 /** Sheet by exact name, or by case-insensitive trimmed match. */
@@ -182,6 +371,8 @@ export function sheetByName(wb: Workbook, name: string): Sheet | undefined {
 export interface HeaderOptions {
   /** Header texts that must all be present (exact, trimmed). */
   require?: string[];
+  /** Header texts of which at least one must be present. */
+  any?: string[];
   /** Minimum non-empty text cells for a row to qualify. */
   minCells?: number;
   /** How many rows from the top to inspect. */
@@ -214,6 +405,7 @@ export function findHeader(sheet: Sheet, opts: HeaderOptions | number = {}): { r
     if (texts.length < minCells) continue;
     const columns = columnsOf(row);
     if (o.require && !o.require.every((k) => columns.has(k))) continue;
+    if (o.any && !o.any.some((k) => columns.has(k))) continue;
     if (!best || texts.length > best.score) best = { rowIndex: r, columns, score: texts.length };
   }
   return best ? { rowIndex: best.rowIndex, columns: best.columns } : null;

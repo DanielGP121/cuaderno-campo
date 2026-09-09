@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-type Config = { mosaic?: Record<string, string>; cieza?: Record<string, string> };
+type Config = Record<string, Record<string, string> | undefined>;
 
 let cached: Config | null | undefined;
 
@@ -18,13 +18,13 @@ export function localConfig(): Config | null {
 }
 
 /** Path of a configured real file if it exists on disk, else null. */
-export function localPath(group: "mosaic" | "cieza", key: string): string | null {
+export function localPath(group: string, key: string): string | null {
   const cfg = localConfig();
   const p = cfg?.[group]?.[key];
   return p && existsSync(p) ? p : null;
 }
 
-export function readLocalBytes(group: "mosaic" | "cieza", key: string): Uint8Array | null {
+export function readLocalBytes(group: string, key: string): Uint8Array | null {
   const p = localPath(group, key);
   return p ? new Uint8Array(readFileSync(p)) : null;
 }

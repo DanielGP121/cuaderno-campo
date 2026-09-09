@@ -11,5 +11,9 @@
   "cieza": {
     "croquis_original": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Bulida_Precoz/03_sources/22_info_parcela_arboles/Croquis_mutants.xlsx",
     "revision_2026_09_02": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Contrato Doctorado/Bulida_Precoz/03_sources/22_info_parcela_arboles/Croquis_mutants_revision_2026-09-02.xlsx"
+  },
+  "drones": {
+    "plot_maps": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Proyectos_Claude/02_app_datos_campo/10.Drones_&_AI/Melocotonero_2025_planos_DRON_RGS.xlsx",
+    "flowering_flights": "C:/Users/there/OneDrive - UNIVERSIDAD DE MURCIA/Proyectos_Claude/02_app_datos_campo/10.Drones_&_AI/DRON_floracion_melocotonero_2026.xlsx"
   }
 }

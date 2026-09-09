@@ -32,6 +32,8 @@ export interface ObservationUnit {
   species?: string;
   plot?: string;
   row?: number;
+  /** Row name as written when it is not a number (the CITA collection names rows by letters). */
+  rowLabel?: string;
   position?: number;
   /** Replicate tree number (1..3) for the same accession. */
   rep?: number;

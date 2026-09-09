@@ -21,9 +21,10 @@ Todo queda en el dispositivo (IndexedDB). No hay cuentas ni servidor.
 | `forcing.ts` | Fracción de yemas más allá de B-C, media por árbol, detección de descensos y CP50 lineal, con la misma aritmética que el Rmd del grupo. |
 | `phenology.ts` | Parser de las etiquetas de visita (`F95-C5`, `DE-F1`, `C30`) y derivación de F10, F50, F80, C10 y C90. |
 | `events.ts`, `sampling.ts` | Registro de eventos append-only con fusión por unión entre dispositivos; planificación de muestreos y recorrido por hileras. |
-| `xlsx/` | Lector y escritor de `.xlsx` propios, sin librería de hojas de cálculo. |
-| `importers/` | Cuaderno de forzado por muestreos, hoja consolidada, registro de árboles y listas de floración de MOSAIC. |
-| `exporters/` | Cuaderno de forzado en el formato del grupo (hoja por muestreo, consolidada y tabla larga). |
+| `xlsx/` | Lector y escritor de `.xlsx` propios, sin librería de hojas de cálculo; el lector devuelve rangos combinados, iconos anclados y, si se pide, el color de fuente y de relleno de cada celda; el escritor acepta color y relleno por celda. |
+| `layout.ts` | La parcela como la dibuja el grupo: filas con posiciones numeradas, guardas, rellenos de patrón, símbolo de estado e identidad MOSAIC por posición; orden de recorrido y una unidad por posición. |
+| `importers/` | Cuaderno de forzado por muestreos, hoja consolidada, registro de árboles y listas de floración de MOSAIC; planos de parcela dibujados en Excel (colección EEAD J4 y J5, ensayo EUFRIN L8, colección CITA 1.4 y parcela de prospección 7-1), cada uno con su dialecto. |
+| `exporters/` | Cuaderno de forzado en el formato del grupo (hoja por muestreo, consolidada y tabla larga); floración en los dos formatos de 2026: hoja por vuelo de dron (estimados en rojo, no fenotipados en gris) y hoja por visita con los eventos intercalados por fecha. |
 
 ## Qué hace (cuando esté)
 
