@@ -200,6 +200,8 @@ function importSheet(sheet: Sheet, headerRow: number, c: Map<string, number>, ou
   const lastVisitIndex = visits.reduce((m, v) => Math.max(m, v.index), iPos ?? 0);
   // the row above the header carries the day's maximum and minimum temperature per visit
   const tempRow = headerRow > 0 ? (sheet.rows[headerRow - 1] ?? []) : [];
+  // rows without a position are named by code and replicate; a repeat gets a counter so no two trees share a name
+  const usedNames = new Map<string, number>();
   for (const v of visits) {
     const vc: VisitColumn = { sheet: sheet.name, date: v.date };
     if (v.flight) vc.flight = v.flight.trim();
@@ -220,7 +222,10 @@ function importSheet(sheet: Sheet, headerRow: number, c: Map<string, number>, ou
     const rep = Number(at(row, iRep));
     const hasPos = Number.isFinite(posN) && posN > 0;
     const hasRow = rowText !== "" && rowText !== "?";
-    const name = hasRow && hasPos ? positionName(plot, rowText, posN) : `${code || acc}${Number.isFinite(rep) && rep > 0 ? `-R${rep}` : ""}`;
+    const base = hasRow && hasPos ? positionName(plot, rowText, posN) : `${code || acc}${Number.isFinite(rep) && rep > 0 ? `-R${rep}` : ""}`;
+    const seenTimes = (usedNames.get(base) ?? 0) + 1;
+    usedNames.set(base, seenTimes);
+    const name = seenTimes === 1 ? base : `${base}#${seenTimes}`;
     const tree: ObservationUnit = { id: ulid(), name, level: "tree", attributes: { sheet: sheet.name } };
     if (code) tree.cultivarCode = code;
     if (acc) tree.accession = acc;

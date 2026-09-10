@@ -91,7 +91,7 @@ function labelsByTreeAndDate(observations: Observation[]): Map<string, Map<strin
   const out = new Map<string, Map<string, Cell>>();
   const seen = new Map<string, Observation>();
   for (const o of observations) {
-    if (o.variableId !== "flowerStageLabel" || superseded.has(o.id)) continue;
+    if (o.variableId !== "flowerStageLabel" || superseded.has(o.id) || o.value === null) continue;
     const date = o.observationTimeStamp.slice(0, 10);
     const key = `${o.unitId}|${date}`;
     const cur = seen.get(key);

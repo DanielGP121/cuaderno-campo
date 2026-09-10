@@ -27,6 +27,8 @@ export interface OutSheet {
   widths?: Record<number, number>;
   /** Freeze the first N rows (optional); those rows are written bold. */
   freezeRows?: number;
+  /** Merged ranges ("E3:F3"), as the hand-drawn plot maps use them for variety names. */
+  merges?: string[];
 }
 
 const NUMFMT_DATE = 164;
@@ -158,8 +160,9 @@ function sheetXml(sheet: OutSheet, book: StyleBook): string {
   const pane = freeze > 0
     ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${freeze}" topLeftCell="A${freeze + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
     : "";
+  const merges = sheet.merges && sheet.merges.length ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` : "";
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${pane}${cols}<sheetData>${rows}</sheetData></worksheet>`;
+    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${pane}${cols}<sheetData>${rows}</sheetData>${merges}</worksheet>`;
 }
 
 /** Build the .xlsx bytes. */

@@ -126,6 +126,28 @@ export interface Observation {
   note?: string;
 }
 
+/** Kinds of field visit: a phenotyping pass, a drone flight, or an event the sheet writes as a column. */
+export type VisitKind = "visit" | "flight" | "pruning" | "treatment" | "irrigation" | "frost" | "other";
+
+/**
+ * A dated pass over one or more plots. Visits and flights hold the stage labels of
+ * that day (one column of the flowering sheet each); the other kinds are events
+ * written between the visit columns (PODA, TRATAM, HELADA) with no label per tree.
+ */
+export interface FieldVisit {
+  id: string;
+  /** ISO date. */
+  date: string;
+  kind: VisitKind;
+  /** Column label as the group writes it ("DRON 17 Feb", "PODA 24 feb"); the date alone when absent. */
+  label?: string;
+  /** Plots the visit covered; absent or empty means every plot. */
+  plots?: string[];
+  /** "Tªmax-Tª min" of the day as written above the column ("16,1-6,1"). */
+  temperature?: string;
+  note?: string;
+}
+
 /** A census: one pass over all units of a study, with a date range. */
 export interface Census {
   id: string;

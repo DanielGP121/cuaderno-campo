@@ -8,7 +8,7 @@
  * mutable documents (units, samplings, layout) the latest event wins.
  */
 import { ulid } from "./ids";
-import type { Census, Observation, ObservationUnit, Sampling, Study } from "./types";
+import type { Census, FieldVisit, Observation, ObservationUnit, Sampling, Study } from "./types";
 
 export type EventPayload =
   | { type: "study.set"; study: Study }
@@ -16,6 +16,7 @@ export type EventPayload =
   | { type: "unit.retire"; unitId: string; reason?: string }
   | { type: "sampling.upsert"; sampling: Sampling }
   | { type: "census.upsert"; census: Census }
+  | { type: "visit.upsert"; visit: FieldVisit }
   | { type: "observation.add"; observation: Observation }
   | { type: "layout.set"; layoutId: string; layout: unknown; version: number }
   | { type: "device.register"; deviceId: string; label: string };
@@ -34,6 +35,7 @@ export interface ProjectState {
   retiredUnits: Set<string>;
   samplings: Map<string, Sampling>;
   censuses: Map<string, Census>;
+  visits: Map<string, FieldVisit>;
   observations: Map<string, Observation>;
   layouts: Map<string, { layout: unknown; version: number }>;
   devices: Map<string, string>;
@@ -48,6 +50,7 @@ export function emptyState(): ProjectState {
     retiredUnits: new Set(),
     samplings: new Map(),
     censuses: new Map(),
+    visits: new Map(),
     observations: new Map(),
     layouts: new Map(),
     devices: new Map(),
@@ -79,6 +82,9 @@ export function applyEvent(state: ProjectState, e: LogEvent): ProjectState {
       break;
     case "census.upsert":
       state.censuses.set(p.census.id, p.census);
+      break;
+    case "visit.upsert":
+      state.visits.set(p.visit.id, p.visit);
       break;
     case "observation.add":
       state.observations.set(p.observation.id, p.observation);

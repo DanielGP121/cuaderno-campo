@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "typecheck:app": "vue-tsc --noEmit",
-    "reproduce": "tsx scripts/reproduce.ts"
+    "reproduce": "tsx scripts/reproduce.ts",
+    "fixtures": "tsx scripts/make_fixtures.ts"
   },
   "dependencies": {
     "dexie": "^4.4.5",
